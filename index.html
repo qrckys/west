@@ -4,8 +4,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <title></title>
 
-  <link rel="preload" href="https://dddanimation.github.io/3d/westwing.glb" as="fetch" crossorigin="anonymous">
-  <link rel="preload" href="https://dddanimation.github.io/3d/westwing.mp3" as="fetch" crossorigin="anonymous">
+  <link rel="preload" href="https://dddanimation.github.io/west/westwing.glb" as="fetch" crossorigin="anonymous">
+  <link rel="preload" href="https://dddanimation.github.io/west/westwing.mp3" as="fetch" crossorigin="anonymous">
 
   <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
@@ -203,7 +203,7 @@
     <p style="font-size: 10px; letter-spacing: 2px; text-transform: uppercase; margin-top: 0; margin-bottom: 30px; opacity: 0.6;">By Qrcky</p>
 
     <div id="status-container">
-      <img src="https://dddanimation.github.io/3d/westwing.jpg" id="marker-preview" alt="Target">
+      <img src="https://dddanimation.github.io/west/westwing.jpg" id="marker-preview" alt="Target">
       <br>
       <button id="start-btn">Enter Experience</button>
 
@@ -222,14 +222,14 @@
   </div>
 
   <a-scene
-    mindar-image="imageTargetSrc: https://dddanimation.github.io/3d/targets.mind; autoStart: false; uiScanning: false; uiLoading: false; maxTrack: 2; filterMinCF: 0.001; filterBeta: 0.001; warmupTolerance: 5; missTolerance: 10;"
+    mindar-image="imageTargetSrc: https://dddanimation.github.io/west/targets.mind; autoStart: false; uiScanning: false; uiLoading: false; maxTrack: 2; filterMinCF: 0.001; filterBeta: 0.001; warmupTolerance: 5; missTolerance: 10;"
     color-space="sRGB"
     renderer="colorManagement: true; physicallyCorrectLights: true; alpha: true"
     vr-mode-ui="enabled: false"
     device-orientation-permission-ui="enabled: false">
 
     <a-assets timeout="30000">
-      <a-asset-item id="sculpture" src="https://dddanimation.github.io/3d/westwing.glb" crossorigin="anonymous"></a-asset-item>
+      <a-asset-item id="sculpture" src="https://dddanimation.github.io/west/westwing.glb" crossorigin="anonymous"></a-asset-item>
     </a-assets>
 
     <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
@@ -305,7 +305,7 @@
     var arStarted         = false; // true only after arReady fires
 
     // ── AUDIO ────────────────────────────────────────────────────────────────
-    var AUDIO_URL = 'https://dddanimation.github.io/3d/westwing.mp3';
+    var AUDIO_URL = 'https://dddanimation.github.io/west/westwing.mp3';
     var audioEl   = new Audio();
     audioEl.src     = AUDIO_URL;
     audioEl.loop    = true;
