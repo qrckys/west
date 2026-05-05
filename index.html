@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <title></title>
+
+  <link rel="preload" href="https://dddanimation.github.io/3d/enslaved.glb" as="fetch" crossorigin="anonymous">
+  <link rel="preload" href="https://dddanimation.github.io/3d/enslaved.mp3" as="fetch" crossorigin="anonymous">
+
+  <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
+  <script src="https://cdn.jsdelivr.net/gh/c-frame/aframe-extras@7.2.0/dist/aframe-extras.min.js"></script>
+
+  <style>
+    html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; }
+
+    body.loading-bg { background: #000 !important; }
+    body.ar-active  { background: transparent !important; }
+    a-scene { background: transparent !important; }
+
+    /* ── SAFARI BANNER ── */
+    #safari-banner {
+      display: none;
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background: #000; color: #fff;
+      flex-direction: column; justify-content: center; align-items: center;
+      z-index: 99999; font-family: sans-serif; text-align: center;
+      padding: 40px; box-sizing: border-box;
+    }
+    #safari-banner h2 {
+      font-weight: 300; letter-spacing: 4px; font-size: 18px; margin-bottom: 20px;
+    }
+    #safari-banner p {
+      font-size: 13px; line-height: 1.8; opacity: 0.75; max-width: 280px;
+      letter-spacing: 1px;
+    }
+    #safari-banner .safari-icon {
+      width: 64px; height: 64px; margin-bottom: 24px; opacity: 0.9;
+    }
+    #open-safari-btn {
+      margin-top: 30px; padding: 16px 36px; font-size: 14px;
+      background: #fff; color: #000; border: none; border-radius: 4px;
+      cursor: pointer; font-weight: bold; text-transform: uppercase;
+      letter-spacing: 2px;
+    }
+
+    /* ── OVERLAY ── */
+    #overlay {
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background: #000; color: white; display: flex; flex-direction: column;
+      justify-content: center; align-items: center; z-index: 9999;
+      font-family: sans-serif; text-align: center;
+    }
+
+    #start-btn {
+      padding: 18px 40px; font-size: 18px; background: #28a745; color: #fff;
+      border: none; border-radius: 4px; cursor: pointer; font-weight: bold;
+      text-transform: uppercase; letter-spacing: 1px;
+    }
+    #start-btn:disabled { background: #555; cursor: default; }
+
+    #marker-preview { width: 150px; border: 1px solid #444; margin-bottom: 25px; opacity: 0.8; }
+
+    #progress-container {
+      width: 240px; height: 4px; background: #222;
+      margin-top: 20px; border-radius: 2px; display: none; overflow: hidden;
+    }
+    #progress-bar { width: 0%; height: 100%; background: #28a745; transition: width 0.3s ease; }
+
+    #progress-text {
+      font-size: 10px; margin-top: 15px; color: #666;
+      display: none; letter-spacing: 2px; text-transform: uppercase;
+    }
+
+    #error-msg {
+      display: none; margin-top: 20px; padding: 12px 20px;
+      background: #8b0000; border-radius: 4px; font-size: 13px;
+      max-width: 280px; line-height: 1.5;
+    }
+
+    #retry-btn {
+      display: none; margin-top: 14px; padding: 12px 28px;
+      font-size: 13px; background: #333; color: #fff;
+      border: 1px solid #555; border-radius: 4px; cursor: pointer;
+      font-weight: bold; text-transform: uppercase; letter-spacing: 1px;
+    }
+
+    /* ── SCAN RETICLE ── */
+    #scan-reticle {
+      position: fixed; top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      width: 200px; height: 200px;
+      z-index: 1000; display: none; pointer-events: none;
+    }
+    #scan-reticle .corner {
+      position: absolute; width: 28px; height: 28px;
+      border-color: #fff; border-style: solid; opacity: 0.85;
+    }
+    #scan-reticle .tl { top: 0; left: 0;    border-width: 3px 0 0 3px; }
+    #scan-reticle .tr { top: 0; right: 0;   border-width: 3px 3px 0 0; }
+    #scan-reticle .bl { bottom: 0; left: 0;  border-width: 0 0 3px 3px; }
+    #scan-reticle .br { bottom: 0; right: 0; border-width: 0 3px 3px 0; }
+
+    @keyframes reticle-pulse {
+      0%, 100% { opacity: 0.85; transform: translate(-50%, -50%) scale(1); }
+      50%       { opacity: 0.35; transform: translate(-50%, -50%) scale(0.93); }
+    }
+    #scan-reticle.scanning { animation: reticle-pulse 1.8s ease-in-out infinite; }
+
+    /* ── SCAN HINT ── */
+    #scan-hint {
+      position: fixed; bottom: 120px; width: 100%; text-align: center;
+      color: #fff; text-shadow: 0 1px 4px rgba(0,0,0,0.8);
+      font-family: sans-serif; font-size: 11px;
+      letter-spacing: 2px; text-transform: uppercase;
+      z-index: 1000; display: none; font-weight: bold; pointer-events: none;
+    }
+
+    /* ── UI BUTTONS ── */
+    #ui-controls {
+      position: fixed; bottom: 40px; left: 50%; transform: translateX(-50%);
+      display: none; gap: 15px; z-index: 1000; width: 90%; justify-content: center;
+    }
+
+    .black-btn {
+      padding: 15px 25px; background: #000; color: #fff; text-decoration: none;
+      border: 1px solid #444; border-radius: 4px; font-family: sans-serif;
+      font-weight: bold; font-size: 11px; text-transform: uppercase;
+      letter-spacing: 1px; text-align: center; min-width: 120px;
+    }
+
+    .a-enter-vr, .a-enter-ar, .a-orientation-modal { display: none !important; }
+  </style>
+
+  <script>
+    // ── SMOOTH-LERP: exits early when entity is not visible ─────────────────
+    AFRAME.registerComponent('smooth-lerp', {
+      schema: {
+        positionAlpha: { type: 'number', default: 0.15 },
+        rotationAlpha: { type: 'number', default: 0.15 }
+      },
+      init() {
+        this.smoothPos   = new THREE.Vector3();
+        this.smoothQuat  = new THREE.Quaternion();
+        this.initialized = false;
+        this.active      = false;
+
+        // Gate ticking on actual tracking state to avoid wasted lerp math
+        this.el.addEventListener('targetFound', () => { this.active = true; });
+        this.el.addEventListener('targetLost',  () => { this.active = false; this.initialized = false; });
+      },
+      tick() {
+        if (!this.active) return;
+        const obj = this.el.object3D;
+        if (!this.initialized) {
+          this.smoothPos.copy(obj.position);
+          this.smoothQuat.copy(obj.quaternion);
+          this.initialized = true;
+          return;
+        }
+        this.smoothPos.lerp(obj.position, this.data.positionAlpha);
+        this.smoothQuat.slerp(obj.quaternion, this.data.rotationAlpha);
+        obj.position.copy(this.smoothPos);
+        obj.quaternion.copy(this.smoothQuat);
+      }
+    });
+  </script>
+</head>
+<body class="loading-bg">
+
+  <!-- Shown when page is opened in QR scanner / in-app browser on iOS -->
+  <div id="safari-banner">
+    <svg class="safari-icon" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="32" cy="32" r="30" stroke="white" stroke-width="2"/>
+      <circle cx="32" cy="32" r="2" fill="white"/>
+      <line x1="32" y1="8" x2="32" y2="14" stroke="white" stroke-width="2"/>
+      <line x1="32" y1="50" x2="32" y2="56" stroke="white" stroke-width="2"/>
+      <line x1="8" y1="32" x2="14" y2="32" stroke="white" stroke-width="2"/>
+      <line x1="50" y1="32" x2="56" y2="32" stroke="white" stroke-width="2"/>
+      <polygon points="38,20 26,38 32,32" fill="white" opacity="0.9"/>
+      <polygon points="26,44 38,26 32,32" fill="white" opacity="0.4"/>
+    </svg>
+    <h2>OPEN IN SAFARI</h2>
+    <p>For the full experience including audio, this page needs to open in Safari.</p>
+    <button id="open-safari-btn">Open in Safari</button>
+    <p style="margin-top: 20px; font-size: 11px; opacity: 0.4;">
+      Tap the button above, or tap<br>
+      the share icon ⎋ → "Open in Safari"
+    </p>
+  </div>
+
+  <div id="scan-reticle">
+    <div class="corner tl"></div>
+    <div class="corner tr"></div>
+    <div class="corner bl"></div>
+    <div class="corner br"></div>
+  </div>
+
+  <div id="scan-hint">Point camera at artwork</div>
+
+  <div id="overlay">
+    <h1 style="letter-spacing: 5px; font-weight: 300; margin-bottom: 5px;">FOUNDATION</h1>
+    <p style="font-size: 10px; letter-spacing: 2px; text-transform: uppercase; margin-top: 0; margin-bottom: 30px; opacity: 0.6;">By Qrcky</p>
+
+    <div id="status-container">
+      <img src="https://dddanimation.github.io/3d/enslaved.jpg" id="marker-preview" alt="Target">
+      <br>
+      <button id="start-btn">Enter Experience</button>
+
+      <div id="progress-container">
+        <div id="progress-bar"></div>
+      </div>
+      <p id="progress-text">Initializing...</p>
+      <div id="error-msg"></div>
+      <button id="retry-btn">Try Again</button>
+    </div>
+  </div>
+
+  <div id="ui-controls">
+    <a href="https://www.instagram.com/qrcky/" target="_blank" class="black-btn">Instagram</a>
+    <a href="https://www.qrcky.net/prints/" target="_blank" class="black-btn">Get Prints</a>
+  </div>
+
+  <a-scene
+    mindar-image="imageTargetSrc: https://dddanimation.github.io/3d/targets.mind; autoStart: false; uiScanning: false; uiLoading: false; maxTrack: 2; filterMinCF: 0.001; filterBeta: 0.001; warmupTolerance: 5; missTolerance: 10;"
+    color-space="sRGB"
+    renderer="colorManagement: true; physicallyCorrectLights: true; alpha: true"
+    vr-mode-ui="enabled: false"
+    device-orientation-permission-ui="enabled: false">
+
+    <a-assets timeout="30000">
+      <a-asset-item id="sculpture" src="https://dddanimation.github.io/3d/enslaved.glb" crossorigin="anonymous"></a-asset-item>
+    </a-assets>
+
+    <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
+    <a-light type="ambient" intensity="1.2"></a-light>
+    <a-light type="directional" intensity="0.8" position="1 2 1"></a-light>
+
+    <!-- TARGET 0 -->
+    <a-entity
+      mindar-image-target="targetIndex: 0"
+      smooth-lerp="positionAlpha: 0.15; rotationAlpha: 0.15"
+      id="target-0">
+      <a-gltf-model
+        src="#sculpture"
+        position="0.0 -0.35 0.0"
+        scale="0.17 0.17 0.17"
+        rotation="0 0 0"
+        animation-mixer
+        animation="property: rotation; to: 0 360 0; loop: true; dur: 50000; easing: linear">
+      </a-gltf-model>
+    </a-entity>
+
+    <!-- TARGET 1 -->
+    <a-entity
+      mindar-image-target="targetIndex: 1"
+      smooth-lerp="positionAlpha: 0.15; rotationAlpha: 0.15"
+      id="target-1">
+      <a-gltf-model
+        src="#sculpture"
+        position="0.0 -0.35 0.0"
+        scale="0.25 0.25 0.25"
+        rotation="0 0 0"
+        animation-mixer
+        animation="property: rotation; to: 0 360 0; loop: true; dur: 50000; easing: linear">
+      </a-gltf-model>
+    </a-entity>
+
+  </a-scene>
+
+  <script>
+    // ── IN-APP BROWSER DETECTION ─────────────────────────────────────────────
+    // Placed after markup so getElementById is safe without waiting for DOMContentLoaded
+    (function() {
+      var ua = navigator.userAgent;
+      if (!/iPhone|iPad|iPod/i.test(ua)) return;
+      var isFullSafari = /Safari\//.test(ua) && !/CriOS|FxiOS/.test(ua);
+      var isStandalone = window.navigator.standalone === true;
+      if (!isFullSafari && !isStandalone) {
+        document.getElementById('safari-banner').style.display = 'flex';
+        document.getElementById('open-safari-btn').addEventListener('click', function() {
+          window.location = 'x-web-search://?q=' + encodeURIComponent(window.location.href);
+          setTimeout(function() { window.location.href = window.location.href; }, 300);
+        });
+      }
+    })();
+
+    // ── DOM REFS ─────────────────────────────────────────────────────────────
+    var startBtn          = document.getElementById('start-btn');
+    var retryBtn          = document.getElementById('retry-btn');
+    var overlay           = document.getElementById('overlay');
+    var progressContainer = document.getElementById('progress-container');
+    var progressBar       = document.getElementById('progress-bar');
+    var progressText      = document.getElementById('progress-text');
+    var errorMsg          = document.getElementById('error-msg');
+    var sceneEl           = document.querySelector('a-scene');
+    var scanHint          = document.getElementById('scan-hint');
+    var scanReticle       = document.getElementById('scan-reticle');
+    var uiControls        = document.getElementById('ui-controls');
+
+    // ── STATE ────────────────────────────────────────────────────────────────
+    // Use a Set so duplicate targetFound/targetLost events can never drift the count
+    var activeTargets     = new Set();
+    var userNavigatedAway = false;
+    var arStarted         = false; // true only after arReady fires
+
+    // ── AUDIO ────────────────────────────────────────────────────────────────
+    var AUDIO_URL = 'https://dddanimation.github.io/3d/enslaved.mp3';
+    var audioEl   = new Audio();
+    audioEl.src     = AUDIO_URL;
+    audioEl.loop    = true;
+    audioEl.preload = 'auto';
+    audioEl.setAttribute('playsinline', '');
+    audioEl.setAttribute('webkit-playsinline', '');
+
+    var audioCtx = null;
+    var gainNode = null;
+    var FADE_S   = 0.6; // seconds — used by Web Audio scheduler
+
+    function unlockAudio() {
+      if (audioCtx) return;
+      try {
+        // Play+pause synchronously in the gesture to unlock HTMLAudioElement on iOS
+        audioEl.play().then(function() {
+          audioEl.pause();
+          audioEl.currentTime = 0;
+        }).catch(function() {});
+
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        gainNode  = audioCtx.createGain();
+        gainNode.gain.value = 0;
+        gainNode.connect(audioCtx.destination);
+        audioCtx.createMediaElementSource(audioEl).connect(gainNode);
+        audioCtx.resume();
+
+        // Entry chime confirms audio is working
+        var chimeGain = audioCtx.createGain();
+        chimeGain.connect(audioCtx.destination);
+        [440, 660].forEach(function(freq, i) {
+          var osc = audioCtx.createOscillator();
+          osc.type = 'sine';
+          osc.frequency.value = freq;
+          osc.connect(chimeGain);
+          var t = audioCtx.currentTime + i * 0.12;
+          chimeGain.gain.setValueAtTime(0, t);
+          chimeGain.gain.linearRampToValueAtTime(0.18, t + 0.04);
+          chimeGain.gain.exponentialRampToValueAtTime(0.001, t + 0.35);
+          osc.start(t);
+          osc.stop(t + 0.35);
+        });
+      } catch(e) {
+        console.warn('Audio setup failed, using fallback:', e);
+        audioCtx = null;
+      }
+    }
+
+    // Resume AudioContext on any touch — iOS suspends it aggressively
+    document.addEventListener('touchend', function() {
+      if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+    }, { passive: true });
+
+    // ── FADE: uses Web Audio scheduler; falls back to rAF volume lerp ────────
+    var fadeRaf = null;
+
+    function fadeTo(targetVol) {
+      if (gainNode) {
+        // Web Audio path — smooth, off the JS thread
+        var now = audioCtx.currentTime;
+        gainNode.gain.cancelScheduledValues(now);
+        gainNode.gain.setValueAtTime(gainNode.gain.value, now);
+        gainNode.gain.linearRampToValueAtTime(targetVol, now + FADE_S);
+        if (targetVol > 0 && audioEl.paused) {
+          audioEl.play().catch(function() {});
+        } else if (targetVol === 0) {
+          setTimeout(function() { audioEl.pause(); }, FADE_S * 1000);
+        }
+      } else {
+        // HTMLAudioElement fallback — unified fade helper
+        cancelAnimationFrame(fadeRaf);
+        var startVol = audioEl.volume;
+        var delta    = targetVol - startVol;
+        var start    = performance.now();
+        var fadeDur  = FADE_S * 1000;
+        if (targetVol > 0 && audioEl.paused) {
+          audioEl.volume = 0;
+          audioEl.play().catch(function() {});
+        }
+        function step(now) {
+          var t = Math.min(1, (now - start) / fadeDur);
+          audioEl.volume = Math.max(0, Math.min(1, startVol + delta * t));
+          if (t < 1) {
+            fadeRaf = requestAnimationFrame(step);
+          } else if (targetVol === 0) {
+            audioEl.pause();
+          }
+        }
+        fadeRaf = requestAnimationFrame(step);
+      }
+    }
+
+    function setAudioPlaying(shouldPlay) {
+      if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+      fadeTo(shouldPlay ? 1 : 0);
+    }
+
+    // ── SIMULATED PROGRESS ───────────────────────────────────────────────────
+    // Kept as setInterval — user is actively watching, tab-hidden waste is acceptable
+    var simProgress = 0;
+    var simInterval = null;
+    var loadTimeout = null;
+
+    function startSimProgress() {
+      simInterval = setInterval(function() {
+        simProgress += (99 - simProgress) * 0.04;
+        renderProgress(simProgress);
+      }, 120);
+      loadTimeout = setTimeout(function() {
+        clearInterval(simInterval);
+        showError('Taking too long to load.<br>Check your connection or camera permissions.', true);
+      }, 30000);
+    }
+
+    function completeProgress() {
+      clearInterval(simInterval);
+      clearTimeout(loadTimeout);
+      renderProgress(100);
+    }
+
+    function renderProgress(val) {
+      var v      = Math.min(100, val);
+      var status = 'DOWNLOADING ASSETS...';
+      if (v > 60) status = 'LOADING MODEL...';
+      if (v > 85) status = 'STARTING CAMERA...';
+      if (v >= 100) status = 'READY';
+      progressBar.style.width = v + '%';
+      progressText.innerText  = status + '  ' + Math.round(v) + '%';
+    }
+
+    // ── START ────────────────────────────────────────────────────────────────
+    startBtn.addEventListener('click', function() {
+      unlockAudio();
+
+      startBtn.style.display          = 'none';
+      progressContainer.style.display = 'block';
+      progressText.style.display      = 'block';
+      startSimProgress();
+
+      function startAR() {
+        var mindAR = sceneEl.systems['mindar-image-system'];
+        if (mindAR) mindAR.start();
+        else showError('AR system failed to initialise. Please refresh.');
+      }
+
+      if (sceneEl.hasLoaded) startAR();
+      else sceneEl.addEventListener('loaded', startAR, { once: true });
+    });
+
+    retryBtn.addEventListener('click', function() { window.location.reload(); });
+
+    // ── AR READY — single consolidated listener ──────────────────────────────
+    sceneEl.addEventListener('arReady', function() {
+      arStarted = true;
+      completeProgress();
+      setTimeout(function() {
+        document.body.classList.remove('loading-bg');
+        document.body.classList.add('ar-active');
+        overlay.style.display     = 'none';
+        scanHint.style.display    = 'block';
+        scanReticle.classList.add('scanning');
+        scanReticle.style.display = 'block';
+      }, 800);
+    }, { once: true });
+
+    // ── TARGET FOUND / LOST — Set-based, immune to duplicate events ──────────
+    var lostTimer = null;
+
+    function onTargetFound(e) {
+      activeTargets.add(e.currentTarget.id);
+      clearTimeout(lostTimer);
+      lostTimer = null;
+      scanReticle.classList.remove('scanning');
+      scanReticle.style.display = 'none';
+      scanHint.style.display    = 'none';
+      uiControls.style.display  = 'flex';
+      if (navigator.vibrate) navigator.vibrate(80);
+      setAudioPlaying(true);
+    }
+
+    function onTargetLost(e) {
+      activeTargets.delete(e.currentTarget.id);
+      clearTimeout(lostTimer);
+      // Keep 1500 ms grace period before hiding UI — prevents flicker on brief loss
+      lostTimer = setTimeout(function() {
+        if (activeTargets.size > 0) return;
+        scanReticle.classList.add('scanning');
+        scanReticle.style.display = 'block';
+        scanHint.style.display    = 'block';
+        uiControls.style.display  = 'none';
+        setAudioPlaying(false);
+      }, 1500);
+    }
+
+    document.getElementById('target-0').addEventListener('targetFound', onTargetFound);
+    document.getElementById('target-0').addEventListener('targetLost',  onTargetLost);
+    document.getElementById('target-1').addEventListener('targetFound', onTargetFound);
+    document.getElementById('target-1').addEventListener('targetLost',  onTargetLost);
+
+    // ── BUTTON NAVIGATION ────────────────────────────────────────────────────
+    document.querySelectorAll('.black-btn').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        userNavigatedAway = true;
+        setAudioPlaying(false);
+      });
+    });
+
+    // ── VISIBILITY ───────────────────────────────────────────────────────────
+    document.addEventListener('visibilitychange', function() {
+      if (document.hidden) {
+        setAudioPlaying(false);
+      } else {
+        if (userNavigatedAway) { userNavigatedAway = false; return; }
+        // Only resume if AR is running and a target is actually tracked
+        if (arStarted && activeTargets.size > 0) setAudioPlaying(true);
+      }
+    });
+
+    // ── ERROR HANDLING ───────────────────────────────────────────────────────
+    sceneEl.addEventListener('arError', function(e) {
+      // Small delay so arReady (if it fires just after) can cancel the error display
+      setTimeout(function() {
+        if (arStarted) return;
+        var detail = (e.detail || '').toString().toLowerCase();
+        var msg;
+        if (location.protocol !== 'https:') {
+          msg = 'HTTPS is required for camera access.<br>Please open this page over a secure connection.';
+        } else if (detail.includes('permission') || detail.includes('denied')) {
+          msg = 'Camera permission was denied.<br>Allow camera access in your browser settings, then refresh.';
+        } else if (detail.includes('support') || detail.includes('webkit')) {
+          msg = 'Your browser may not support WebAR.<br>Try opening in Chrome or Safari.';
+        } else {
+          msg = 'Could not start the camera.<br>Please refresh and allow camera access.';
+        }
+        showError(msg, true);
+      }, 2000);
+    });
+
+    function showError(html, showRetry) {
+      clearInterval(simInterval);
+      clearTimeout(loadTimeout);
+      startBtn.style.display          = 'none';
+      progressContainer.style.display = 'none';
+      progressText.style.display      = 'none';
+      errorMsg.innerHTML              = html;
+      errorMsg.style.display          = 'block';
+      retryBtn.style.display          = showRetry ? 'inline-block' : 'none';
+    }
+  </script>
+</body>
+</html>
