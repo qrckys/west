@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-  <title></title>
+  <title>MARK WEST AR</title>
 
   <link rel="preload" href="https://qrckys.github.io/west/westwing.glb" as="fetch" crossorigin="anonymous">
   <link rel="preload" href="https://qrckys.github.io/west/westwing2.glb" as="fetch" crossorigin="anonymous">
@@ -135,7 +135,6 @@
   </style>
 
   <script>
-    // ── SMOOTH-LERP ──────────────────────────────────────────────────────────
     AFRAME.registerComponent('smooth-lerp', {
       schema: {
         positionAlpha: { type: 'number', default: 0.15 },
@@ -169,7 +168,6 @@
 </head>
 <body class="loading-bg">
 
-  <!-- Shown when page is opened in QR scanner / in-app browser on iOS -->
   <div id="safari-banner">
     <svg class="safari-icon" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
       <circle cx="32" cy="32" r="30" stroke="white" stroke-width="2"/>
@@ -184,17 +182,11 @@
     <h2>OPEN IN SAFARI</h2>
     <p>For the full experience including audio, this page needs to open in Safari.</p>
     <button id="open-safari-btn">Open in Safari</button>
-    <p style="margin-top: 20px; font-size: 11px; opacity: 0.4;">
-      Tap the button above, or tap<br>
-      the share icon ⎋ → "Open in Safari"
-    </p>
   </div>
 
   <div id="scan-reticle">
-    <div class="corner tl"></div>
-    <div class="corner tr"></div>
-    <div class="corner bl"></div>
-    <div class="corner br"></div>
+    <div class="corner tl"></div><div class="corner tr"></div>
+    <div class="corner bl"></div><div class="corner br"></div>
   </div>
 
   <div id="scan-hint">Point camera at artwork</div>
@@ -223,7 +215,7 @@
   </div>
 
   <a-scene
-    mindar-image="imageTargetSrc: https://qrckys.github.io/west/targets.mind; autoStart: false; uiScanning: false; uiLoading: false; maxTrack: 2; filterMinCF: 0.001; filterBeta: 0.001; warmupTolerance: 5; missTolerance: 10;"
+    mindar-image="imageTargetSrc: https://qrckys.github.io/west/targets.mind; autoStart: false; uiScanning: false; uiLoading: false; maxTrack: 2; filterMinCF: 0.001; filterBeta: 0.001;"
     color-space="sRGB"
     renderer="colorManagement: true; physicallyCorrectLights: true; alpha: true"
     vr-mode-ui="enabled: false"
@@ -238,104 +230,59 @@
     <a-light type="ambient" intensity="1.2"></a-light>
     <a-light type="directional" intensity="0.8" position="1 2 1"></a-light>
 
-    <!-- TARGET 0 — westwing.glb -->
-    <a-entity
-      mindar-image-target="targetIndex: 0"
-      smooth-lerp="positionAlpha: 0.15; rotationAlpha: 0.15"
-      id="target-0">
-      <a-gltf-model
-        src="#sculpture0"
-        position="0.0 0.0 0.0"
-        scale=".6 .6 .6"
-        rotation="0 0 0"
-        animation-mixer
-        animation="property: rotation; to: 0 0 0; loop: true; dur: 50000; easing: linear">
-      </a-gltf-model>
+    <a-entity mindar-image-target="targetIndex: 0" smooth-lerp id="target-0">
+      <a-gltf-model src="#sculpture0" scale=".6 .6 .6" animation-mixer></a-gltf-model>
     </a-entity>
 
-    <!-- TARGET 1 — westwing2.glb -->
-    <a-entity
-      mindar-image-target="targetIndex: 1"
-      smooth-lerp="positionAlpha: 0.15; rotationAlpha: 0.15"
-      id="target-1">
-      <a-gltf-model
-        src="#sculpture1"
-        position="0.0 0.0 0.0"
-        scale=".6 .6 .6"
-        rotation="0 0 0"
-        animation-mixer
-        animation="property: rotation; to: 0 0 0; loop: true; dur: 50000; easing: linear">
-      </a-gltf-model>
+    <a-entity mindar-image-target="targetIndex: 1" smooth-lerp id="target-1">
+      <a-gltf-model src="#sculpture1" scale=".6 .6 .6" animation-mixer></a-gltf-model>
     </a-entity>
-
   </a-scene>
 
   <script>
-    // ── IN-APP BROWSER DETECTION ─────────────────────────────────────────────
+    // ── IN-APP BROWSER DETECTION ──
     (function() {
       var ua = navigator.userAgent;
       if (!/iPhone|iPad|iPod/i.test(ua)) return;
       var isFullSafari = /Safari\//.test(ua) && !/CriOS|FxiOS/.test(ua);
-      var isStandalone = window.navigator.standalone === true;
-      if (!isFullSafari && !isStandalone) {
+      if (!isFullSafari && !window.navigator.standalone) {
         document.getElementById('safari-banner').style.display = 'flex';
         document.getElementById('open-safari-btn').addEventListener('click', function() {
           window.location = 'x-web-search://?q=' + encodeURIComponent(window.location.href);
-          setTimeout(function() { window.location.href = window.location.href; }, 300);
         });
       }
     })();
 
-    // ── DOM REFS ─────────────────────────────────────────────────────────────
-    var startBtn          = document.getElementById('start-btn');
-    var retryBtn          = document.getElementById('retry-btn');
-    var overlay           = document.getElementById('overlay');
-    var progressContainer = document.getElementById('progress-container');
-    var progressBar       = document.getElementById('progress-bar');
-    var progressText      = document.getElementById('progress-text');
-    var errorMsg          = document.getElementById('error-msg');
-    var sceneEl           = document.querySelector('a-scene');
-    var scanHint          = document.getElementById('scan-hint');
-    var scanReticle       = document.getElementById('scan-reticle');
-    var uiControls        = document.getElementById('ui-controls');
+    var startBtn = document.getElementById('start-btn'), overlay = document.getElementById('overlay'), 
+        sceneEl = document.querySelector('a-scene'), scanHint = document.getElementById('scan-hint'),
+        scanReticle = document.getElementById('scan-reticle'), uiControls = document.getElementById('ui-controls'),
+        progressBar = document.getElementById('progress-bar'), progressText = document.getElementById('progress-text');
 
-    // ── STATE ────────────────────────────────────────────────────────────────
-    var activeTargets     = new Set();
-    var userNavigatedAway = false;
-    var arStarted         = false;
-
-    // ── AUDIO — two separate players, one per target ─────────────────────────
+    var activeTargets = new Set(), arStarted = false, audioCtx = null, gainNodes = [null, null];
+    
+    // FIXED URLS
     var AUDIO_URLS = [
-      'https://qrckys.github.io/west/westwing.',
-      'https://qrckys.github.io/west/westwing2.'
+      'https://qrckys.github.io/west/westwing.mp3',
+      'https://qrckys.github.io/west/westwing2.mp3'
     ];
 
     var audioEls = AUDIO_URLS.map(function(url) {
-      var el = new Audio();
-      el.src     = url;
-      el.loop    = true;
+      var el = new Audio(url);
+      el.loop = true;
       el.preload = 'auto';
       el.setAttribute('playsinline', '');
-      el.setAttribute('webkit-playsinline', '');
       return el;
     });
-
-    var audioCtx   = null;
-    var gainNodes  = [null, null];
-    var FADE_S     = 0.6;
 
     function unlockAudio() {
       if (audioCtx) return;
       try {
-        // Unlock both elements in the gesture
-        audioEls.forEach(function(el) {
-          el.play().then(function() {
-            el.pause();
-            el.currentTime = 0;
-          }).catch(function() {});
-        });
-
         audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        audioCtx.resume();
+
+        audioEls.forEach(function(el) {
+          el.play().then(function() { el.pause(); el.currentTime = 0; }).catch(function(){});
+        });
 
         gainNodes = audioEls.map(function(el) {
           var g = audioCtx.createGain();
@@ -344,246 +291,68 @@
           audioCtx.createMediaElementSource(el).connect(g);
           return g;
         });
-
-        audioCtx.resume();
-
-        // Entry chime
-        var chimeGain = audioCtx.createGain();
-        chimeGain.connect(audioCtx.destination);
-        [440, 660].forEach(function(freq, i) {
-          var osc = audioCtx.createOscillator();
-          osc.type = 'sine';
-          osc.frequency.value = freq;
-          osc.connect(chimeGain);
-          var t = audioCtx.currentTime + i * 0.12;
-          chimeGain.gain.setValueAtTime(0, t);
-          chimeGain.gain.linearRampToValueAtTime(0.18, t + 0.04);
-          chimeGain.gain.exponentialRampToValueAtTime(0.001, t + 0.35);
-          osc.start(t);
-          osc.stop(t + 0.35);
-        });
-      } catch(e) {
-        console.warn('Audio setup failed, using fallback:', e);
-        audioCtx = null;
-      }
+      } catch(e) { console.warn('Audio setup failed:', e); }
     }
-
-    document.addEventListener('touchend', function() {
-      if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
-    }, { passive: true });
-
-    // ── FADE helpers ─────────────────────────────────────────────────────────
-    var fadeRafs = [null, null];
 
     function fadeTrackTo(idx, targetVol) {
-      var audioEl  = audioEls[idx];
-      var gainNode = gainNodes[idx];
-
-      if (gainNode) {
-        var now = audioCtx.currentTime;
-        gainNode.gain.cancelScheduledValues(now);
-        gainNode.gain.setValueAtTime(gainNode.gain.value, now);
-        gainNode.gain.linearRampToValueAtTime(targetVol, now + FADE_S);
-        if (targetVol > 0 && audioEl.paused) {
-          audioEl.play().catch(function() {});
-        } else if (targetVol === 0) {
-          setTimeout(function() { audioEl.pause(); }, FADE_S * 1000);
-        }
-      } else {
-        cancelAnimationFrame(fadeRafs[idx]);
-        var startVol = audioEl.volume;
-        var delta    = targetVol - startVol;
-        var start    = performance.now();
-        var fadeDur  = FADE_S * 1000;
-        if (targetVol > 0 && audioEl.paused) {
-          audioEl.volume = 0;
-          audioEl.play().catch(function() {});
-        }
-        (function step(now) {
-          var t = Math.min(1, (now - start) / fadeDur);
-          audioEl.volume = Math.max(0, Math.min(1, startVol + delta * t));
-          if (t < 1) {
-            fadeRafs[idx] = requestAnimationFrame(step);
-          } else if (targetVol === 0) {
-            audioEl.pause();
-          }
-        })(performance.now());
-      }
+      var el = audioEls[idx], g = gainNodes[idx];
+      if (!g) return;
+      var now = audioCtx.currentTime;
+      g.gain.cancelScheduledValues(now);
+      g.gain.setValueAtTime(g.gain.value, now);
+      g.gain.linearRampToValueAtTime(targetVol, now + 0.6);
+      if (targetVol > 0 && el.paused) el.play().catch(function(){});
+      else if (targetVol === 0) setTimeout(function(){ if(g.gain.value === 0) el.pause(); }, 600);
     }
 
-    function setTrackPlaying(idx, shouldPlay) {
-      if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
-      fadeTrackTo(idx, shouldPlay ? 1 : 0);
-    }
-
-    function setAllAudioPlaying(shouldPlay) {
-      setTrackPlaying(0, shouldPlay);
-      setTrackPlaying(1, shouldPlay);
-    }
-
-    // ── SIMULATED PROGRESS ───────────────────────────────────────────────────
-    var simProgress = 0;
-    var simInterval = null;
-    var loadTimeout = null;
-
-    function startSimProgress() {
-      simInterval = setInterval(function() {
-        simProgress += (99 - simProgress) * 0.04;
-        renderProgress(simProgress);
-      }, 120);
-      loadTimeout = setTimeout(function() {
-        clearInterval(simInterval);
-        showError('Taking too long to load.<br>Check your connection or camera permissions.', true);
-      }, 30000);
-    }
-
-    function completeProgress() {
-      clearInterval(simInterval);
-      clearTimeout(loadTimeout);
-      renderProgress(100);
-    }
-
-    function renderProgress(val) {
-      var v      = Math.min(100, val);
-      var status = 'DOWNLOADING ASSETS...';
-      if (v > 60) status = 'LOADING MODEL...';
-      if (v > 85) status = 'STARTING CAMERA...';
-      if (v >= 100) status = 'READY';
-      progressBar.style.width = v + '%';
-      progressText.innerText  = status + '  ' + Math.round(v) + '%';
-    }
-
-    // ── START ────────────────────────────────────────────────────────────────
     startBtn.addEventListener('click', function() {
       unlockAudio();
-
-      startBtn.style.display          = 'none';
-      progressContainer.style.display = 'block';
-      progressText.style.display      = 'block';
-      startSimProgress();
-
-      function startAR() {
-        var mindAR = sceneEl.systems['mindar-image-system'];
-        if (mindAR) mindAR.start();
-        else showError('AR system failed to initialise. Please refresh.');
-      }
-
+      startBtn.style.display = 'none';
+      document.getElementById('progress-container').style.display = 'block';
+      progressText.style.display = 'block';
+      
+      const startAR = () => { sceneEl.systems['mindar-image-system'].start(); };
       if (sceneEl.hasLoaded) startAR();
       else sceneEl.addEventListener('loaded', startAR, { once: true });
     });
 
-    retryBtn.addEventListener('click', function() { window.location.reload(); });
-
-    // ── AR READY ─────────────────────────────────────────────────────────────
     sceneEl.addEventListener('arReady', function() {
       arStarted = true;
-      completeProgress();
-      setTimeout(function() {
-        document.body.classList.remove('loading-bg');
-        document.body.classList.add('ar-active');
-        overlay.style.display     = 'none';
-        scanHint.style.display    = 'block';
-        scanReticle.classList.add('scanning');
-        scanReticle.style.display = 'block';
-      }, 800);
-    }, { once: true });
-
-    // ── TARGET FOUND / LOST — each target controls its own audio track ────────
-    var lostTimers = [null, null];
+      overlay.style.display = 'none';
+      scanHint.style.display = 'block';
+      scanReticle.style.display = 'block';
+      scanReticle.classList.add('scanning');
+      document.body.classList.replace('loading-bg', 'ar-active');
+    });
 
     function onTargetFound(e) {
-      var idx = parseInt(e.currentTarget.id.split('-')[1], 10);
+      var idx = parseInt(e.currentTarget.id.split('-')[1]);
       activeTargets.add(idx);
-      clearTimeout(lostTimers[idx]);
-      lostTimers[idx] = null;
-
-      // Show UI only on first target found
       if (activeTargets.size === 1) {
-        scanReticle.classList.remove('scanning');
         scanReticle.style.display = 'none';
-        scanHint.style.display    = 'none';
-        uiControls.style.display  = 'flex';
-        if (navigator.vibrate) navigator.vibrate(80);
+        scanHint.style.display = 'none';
+        uiControls.style.display = 'flex';
       }
-
-      setTrackPlaying(idx, true);
+      fadeTrackTo(idx, 1);
     }
 
     function onTargetLost(e) {
-      var idx = parseInt(e.currentTarget.id.split('-')[1], 10);
+      var idx = parseInt(e.currentTarget.id.split('-')[1]);
       activeTargets.delete(idx);
-      clearTimeout(lostTimers[idx]);
-
-      lostTimers[idx] = setTimeout(function() {
-        // Fade out just this target's track
-        setTrackPlaying(idx, false);
-
-        // Only restore scanning UI if no targets remain
+      setTimeout(function() {
+        if (!activeTargets.has(idx)) fadeTrackTo(idx, 0);
         if (activeTargets.size === 0) {
-          scanReticle.classList.add('scanning');
           scanReticle.style.display = 'block';
-          scanHint.style.display    = 'block';
-          uiControls.style.display  = 'none';
+          scanHint.style.display = 'block';
+          uiControls.style.display = 'none';
         }
       }, 1500);
     }
 
     document.getElementById('target-0').addEventListener('targetFound', onTargetFound);
-    document.getElementById('target-0').addEventListener('targetLost',  onTargetLost);
+    document.getElementById('target-0').addEventListener('targetLost', onTargetLost);
     document.getElementById('target-1').addEventListener('targetFound', onTargetFound);
-    document.getElementById('target-1').addEventListener('targetLost',  onTargetLost);
-
-    // ── BUTTON NAVIGATION ────────────────────────────────────────────────────
-    document.querySelectorAll('.black-btn').forEach(function(btn) {
-      btn.addEventListener('click', function() {
-        userNavigatedAway = true;
-        setAllAudioPlaying(false);
-      });
-    });
-
-    // ── VISIBILITY ───────────────────────────────────────────────────────────
-    document.addEventListener('visibilitychange', function() {
-      if (document.hidden) {
-        setAllAudioPlaying(false);
-      } else {
-        if (userNavigatedAway) { userNavigatedAway = false; return; }
-        if (arStarted) {
-          activeTargets.forEach(function(idx) {
-            setTrackPlaying(idx, true);
-          });
-        }
-      }
-    });
-
-    // ── ERROR HANDLING ───────────────────────────────────────────────────────
-    sceneEl.addEventListener('arError', function(e) {
-      setTimeout(function() {
-        if (arStarted) return;
-        var detail = (e.detail || '').toString().toLowerCase();
-        var msg;
-        if (location.protocol !== 'https:') {
-          msg = 'HTTPS is required for camera access.<br>Please open this page over a secure connection.';
-        } else if (detail.includes('permission') || detail.includes('denied')) {
-          msg = 'Camera permission was denied.<br>Allow camera access in your browser settings, then refresh.';
-        } else if (detail.includes('support') || detail.includes('webkit')) {
-          msg = 'Your browser may not support WebAR.<br>Try opening in Chrome or Safari.';
-        } else {
-          msg = 'Could not start the camera.<br>Please refresh and allow camera access.';
-        }
-        showError(msg, true);
-      }, 2000);
-    });
-
-    function showError(html, showRetry) {
-      clearInterval(simInterval);
-      clearTimeout(loadTimeout);
-      startBtn.style.display          = 'none';
-      progressContainer.style.display = 'none';
-      progressText.style.display      = 'none';
-      errorMsg.innerHTML              = html;
-      errorMsg.style.display          = 'block';
-      retryBtn.style.display          = showRetry ? 'inline-block' : 'none';
-    }
+    document.getElementById('target-1').addEventListener('targetLost', onTargetLost);
   </script>
 </body>
 </html>
