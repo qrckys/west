@@ -5,7 +5,9 @@
   <title></title>
 
   <link rel="preload" href="https://qrckys.github.io/west/westwing.glb" as="fetch" crossorigin="anonymous">
+  <link rel="preload" href="https://qrckys.github.io/west/westwing2.glb" as="fetch" crossorigin="anonymous">
   <link rel="preload" href="https://qrckys.github.io/west/westwing.mp3" as="fetch" crossorigin="anonymous">
+  <link rel="preload" href="https://qrckys.github.io/west/westwing2.mp3" as="fetch" crossorigin="anonymous">
 
   <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
@@ -133,7 +135,7 @@
   </style>
 
   <script>
-    // ── SMOOTH-LERP: exits early when entity is not visible ─────────────────
+    // ── SMOOTH-LERP ──────────────────────────────────────────────────────────
     AFRAME.registerComponent('smooth-lerp', {
       schema: {
         positionAlpha: { type: 'number', default: 0.15 },
@@ -145,7 +147,6 @@
         this.initialized = false;
         this.active      = false;
 
-        // Gate ticking on actual tracking state to avoid wasted lerp math
         this.el.addEventListener('targetFound', () => { this.active = true; });
         this.el.addEventListener('targetLost',  () => { this.active = false; this.initialized = false; });
       },
@@ -229,42 +230,41 @@
     device-orientation-permission-ui="enabled: false">
 
     <a-assets timeout="30000">
-      <a-asset-item id="sculpture" src="https://qrckys.github.io/west/westwing.glb" crossorigin="anonymous"></a-asset-item>
+      <a-asset-item id="sculpture0" src="https://qrckys.github.io/west/westwing.glb" crossorigin="anonymous"></a-asset-item>
+      <a-asset-item id="sculpture1" src="https://qrckys.github.io/west/westwing2.glb" crossorigin="anonymous"></a-asset-item>
     </a-assets>
 
     <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
     <a-light type="ambient" intensity="1.2"></a-light>
     <a-light type="directional" intensity="0.8" position="1 2 1"></a-light>
 
-    <!-- TARGET 0 -->
+    <!-- TARGET 0 — westwing.glb -->
     <a-entity
       mindar-image-target="targetIndex: 0"
       smooth-lerp="positionAlpha: 0.15; rotationAlpha: 0.15"
       id="target-0">
       <a-gltf-model
-        src="#sculpture"
-       position="0.0 0.0 0.0"
-        scale="1 1 1"
-        rotation="0 0 0"
-        animation-mixer
-        animation="property: rotation; to: 0 0 0; loop: true; dur: 50000; easing: linear">
-       
-      </a-gltf-model>
-    </a-entity>
-
-    <!-- TARGET 1 -->
-    <a-entity
-      mindar-image-target="targetIndex: 1"
-      smooth-lerp="positionAlpha: 0.15; rotationAlpha: 0.15"
-      id="target-1">
-      <a-gltf-model
-        src="#sculpture"
+        src="#sculpture0"
         position="0.0 0.0 0.0"
         scale="1 1 1"
         rotation="0 0 0"
         animation-mixer
         animation="property: rotation; to: 0 0 0; loop: true; dur: 50000; easing: linear">
-       
+      </a-gltf-model>
+    </a-entity>
+
+    <!-- TARGET 1 — westwing2.glb -->
+    <a-entity
+      mindar-image-target="targetIndex: 1"
+      smooth-lerp="positionAlpha: 0.15; rotationAlpha: 0.15"
+      id="target-1">
+      <a-gltf-model
+        src="#sculpture1"
+        position="0.0 0.0 0.0"
+        scale="1 1 1"
+        rotation="0 0 0"
+        animation-mixer
+        animation="property: rotation; to: 0 0 0; loop: true; dur: 50000; easing: linear">
       </a-gltf-model>
     </a-entity>
 
@@ -272,7 +272,6 @@
 
   <script>
     // ── IN-APP BROWSER DETECTION ─────────────────────────────────────────────
-    // Placed after markup so getElementById is safe without waiting for DOMContentLoaded
     (function() {
       var ua = navigator.userAgent;
       if (!/iPhone|iPad|iPod/i.test(ua)) return;
@@ -301,41 +300,54 @@
     var uiControls        = document.getElementById('ui-controls');
 
     // ── STATE ────────────────────────────────────────────────────────────────
-    // Use a Set so duplicate targetFound/targetLost events can never drift the count
     var activeTargets     = new Set();
     var userNavigatedAway = false;
-    var arStarted         = false; // true only after arReady fires
+    var arStarted         = false;
 
-    // ── AUDIO ────────────────────────────────────────────────────────────────
-    var AUDIO_URL = 'https://qrckys.github.io/west/westwing.mp3';
-    var audioEl   = new Audio();
-    audioEl.src     = AUDIO_URL;
-    audioEl.loop    = true;
-    audioEl.preload = 'auto';
-    audioEl.setAttribute('playsinline', '');
-    audioEl.setAttribute('webkit-playsinline', '');
+    // ── AUDIO — two separate players, one per target ─────────────────────────
+    var AUDIO_URLS = [
+      'https://qrckys.github.io/west/westwing.',
+      'https://qrckys.github.io/west/westwing2.'
+    ];
 
-    var audioCtx = null;
-    var gainNode = null;
-    var FADE_S   = 0.6; // seconds — used by Web Audio scheduler
+    var audioEls = AUDIO_URLS.map(function(url) {
+      var el = new Audio();
+      el.src     = url;
+      el.loop    = true;
+      el.preload = 'auto';
+      el.setAttribute('playsinline', '');
+      el.setAttribute('webkit-playsinline', '');
+      return el;
+    });
+
+    var audioCtx   = null;
+    var gainNodes  = [null, null];
+    var FADE_S     = 0.6;
 
     function unlockAudio() {
       if (audioCtx) return;
       try {
-        // Play+pause synchronously in the gesture to unlock HTMLAudioElement on iOS
-        audioEl.play().then(function() {
-          audioEl.pause();
-          audioEl.currentTime = 0;
-        }).catch(function() {});
+        // Unlock both elements in the gesture
+        audioEls.forEach(function(el) {
+          el.play().then(function() {
+            el.pause();
+            el.currentTime = 0;
+          }).catch(function() {});
+        });
 
         audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        gainNode  = audioCtx.createGain();
-        gainNode.gain.value = 0;
-        gainNode.connect(audioCtx.destination);
-        audioCtx.createMediaElementSource(audioEl).connect(gainNode);
+
+        gainNodes = audioEls.map(function(el) {
+          var g = audioCtx.createGain();
+          g.gain.value = 0;
+          g.connect(audioCtx.destination);
+          audioCtx.createMediaElementSource(el).connect(g);
+          return g;
+        });
+
         audioCtx.resume();
 
-        // Entry chime confirms audio is working
+        // Entry chime
         var chimeGain = audioCtx.createGain();
         chimeGain.connect(audioCtx.destination);
         [440, 660].forEach(function(freq, i) {
@@ -356,17 +368,18 @@
       }
     }
 
-    // Resume AudioContext on any touch — iOS suspends it aggressively
     document.addEventListener('touchend', function() {
       if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
     }, { passive: true });
 
-    // ── FADE: uses Web Audio scheduler; falls back to rAF volume lerp ────────
-    var fadeRaf = null;
+    // ── FADE helpers ─────────────────────────────────────────────────────────
+    var fadeRafs = [null, null];
 
-    function fadeTo(targetVol) {
+    function fadeTrackTo(idx, targetVol) {
+      var audioEl  = audioEls[idx];
+      var gainNode = gainNodes[idx];
+
       if (gainNode) {
-        // Web Audio path — smooth, off the JS thread
         var now = audioCtx.currentTime;
         gainNode.gain.cancelScheduledValues(now);
         gainNode.gain.setValueAtTime(gainNode.gain.value, now);
@@ -377,8 +390,7 @@
           setTimeout(function() { audioEl.pause(); }, FADE_S * 1000);
         }
       } else {
-        // HTMLAudioElement fallback — unified fade helper
-        cancelAnimationFrame(fadeRaf);
+        cancelAnimationFrame(fadeRafs[idx]);
         var startVol = audioEl.volume;
         var delta    = targetVol - startVol;
         var start    = performance.now();
@@ -387,26 +399,29 @@
           audioEl.volume = 0;
           audioEl.play().catch(function() {});
         }
-        function step(now) {
+        (function step(now) {
           var t = Math.min(1, (now - start) / fadeDur);
           audioEl.volume = Math.max(0, Math.min(1, startVol + delta * t));
           if (t < 1) {
-            fadeRaf = requestAnimationFrame(step);
+            fadeRafs[idx] = requestAnimationFrame(step);
           } else if (targetVol === 0) {
             audioEl.pause();
           }
-        }
-        fadeRaf = requestAnimationFrame(step);
+        })(performance.now());
       }
     }
 
-    function setAudioPlaying(shouldPlay) {
+    function setTrackPlaying(idx, shouldPlay) {
       if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
-      fadeTo(shouldPlay ? 1 : 0);
+      fadeTrackTo(idx, shouldPlay ? 1 : 0);
+    }
+
+    function setAllAudioPlaying(shouldPlay) {
+      setTrackPlaying(0, shouldPlay);
+      setTrackPlaying(1, shouldPlay);
     }
 
     // ── SIMULATED PROGRESS ───────────────────────────────────────────────────
-    // Kept as setInterval — user is actively watching, tab-hidden waste is acceptable
     var simProgress = 0;
     var simInterval = null;
     var loadTimeout = null;
@@ -459,7 +474,7 @@
 
     retryBtn.addEventListener('click', function() { window.location.reload(); });
 
-    // ── AR READY — single consolidated listener ──────────────────────────────
+    // ── AR READY ─────────────────────────────────────────────────────────────
     sceneEl.addEventListener('arReady', function() {
       arStarted = true;
       completeProgress();
@@ -473,32 +488,43 @@
       }, 800);
     }, { once: true });
 
-    // ── TARGET FOUND / LOST — Set-based, immune to duplicate events ──────────
-    var lostTimer = null;
+    // ── TARGET FOUND / LOST — each target controls its own audio track ────────
+    var lostTimers = [null, null];
 
     function onTargetFound(e) {
-      activeTargets.add(e.currentTarget.id);
-      clearTimeout(lostTimer);
-      lostTimer = null;
-      scanReticle.classList.remove('scanning');
-      scanReticle.style.display = 'none';
-      scanHint.style.display    = 'none';
-      uiControls.style.display  = 'flex';
-      if (navigator.vibrate) navigator.vibrate(80);
-      setAudioPlaying(true);
+      var idx = parseInt(e.currentTarget.id.split('-')[1], 10);
+      activeTargets.add(idx);
+      clearTimeout(lostTimers[idx]);
+      lostTimers[idx] = null;
+
+      // Show UI only on first target found
+      if (activeTargets.size === 1) {
+        scanReticle.classList.remove('scanning');
+        scanReticle.style.display = 'none';
+        scanHint.style.display    = 'none';
+        uiControls.style.display  = 'flex';
+        if (navigator.vibrate) navigator.vibrate(80);
+      }
+
+      setTrackPlaying(idx, true);
     }
 
     function onTargetLost(e) {
-      activeTargets.delete(e.currentTarget.id);
-      clearTimeout(lostTimer);
-      // Keep 1500 ms grace period before hiding UI — prevents flicker on brief loss
-      lostTimer = setTimeout(function() {
-        if (activeTargets.size > 0) return;
-        scanReticle.classList.add('scanning');
-        scanReticle.style.display = 'block';
-        scanHint.style.display    = 'block';
-        uiControls.style.display  = 'none';
-        setAudioPlaying(false);
+      var idx = parseInt(e.currentTarget.id.split('-')[1], 10);
+      activeTargets.delete(idx);
+      clearTimeout(lostTimers[idx]);
+
+      lostTimers[idx] = setTimeout(function() {
+        // Fade out just this target's track
+        setTrackPlaying(idx, false);
+
+        // Only restore scanning UI if no targets remain
+        if (activeTargets.size === 0) {
+          scanReticle.classList.add('scanning');
+          scanReticle.style.display = 'block';
+          scanHint.style.display    = 'block';
+          uiControls.style.display  = 'none';
+        }
       }, 1500);
     }
 
@@ -511,24 +537,26 @@
     document.querySelectorAll('.black-btn').forEach(function(btn) {
       btn.addEventListener('click', function() {
         userNavigatedAway = true;
-        setAudioPlaying(false);
+        setAllAudioPlaying(false);
       });
     });
 
     // ── VISIBILITY ───────────────────────────────────────────────────────────
     document.addEventListener('visibilitychange', function() {
       if (document.hidden) {
-        setAudioPlaying(false);
+        setAllAudioPlaying(false);
       } else {
         if (userNavigatedAway) { userNavigatedAway = false; return; }
-        // Only resume if AR is running and a target is actually tracked
-        if (arStarted && activeTargets.size > 0) setAudioPlaying(true);
+        if (arStarted) {
+          activeTargets.forEach(function(idx) {
+            setTrackPlaying(idx, true);
+          });
+        }
       }
     });
 
     // ── ERROR HANDLING ───────────────────────────────────────────────────────
     sceneEl.addEventListener('arError', function(e) {
-      // Small delay so arReady (if it fires just after) can cancel the error display
       setTimeout(function() {
         if (arStarted) return;
         var detail = (e.detail || '').toString().toLowerCase();
