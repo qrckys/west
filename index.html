@@ -18,7 +18,6 @@
     body.ar-active { background: transparent !important; }
     a-scene { background: transparent !important; }
 
-    /* ── SAFARI BANNER ── */
     #safari-banner {
       display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
       background: #000; color: #fff; flex-direction: column; justify-content: center;
@@ -30,7 +29,6 @@
       color: #000; border: none; border-radius: 4px; font-weight: bold; text-transform: uppercase;
     }
 
-    /* ── UI OVERLAY ── */
     #overlay {
       position: fixed; top: 0; left: 0; width: 100%; height: 100%;
       background: #000; color: white; display: flex; flex-direction: column;
@@ -46,7 +44,6 @@
     #progress-bar { width: 0%; height: 100%; background: #28a745; transition: width 0.3s ease; }
     #progress-text { font-size: 10px; margin-top: 15px; color: #666; display: none; letter-spacing: 2px; }
 
-    /* ── SCAN UI ── */
     #scan-reticle {
       position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
       width: 200px; height: 200px; z-index: 1000; display: none; pointer-events: none;
@@ -68,10 +65,35 @@
       padding: 15px 25px; background: #000; color: #fff; text-decoration: none;
       border: 1px solid #444; border-radius: 4px; font-size: 11px; font-weight: bold;
     }
+
+    /* ── DEBUG LOG PANEL ── */
+    #debug-log {
+      position: fixed; top: 10px; left: 0; right: 0; z-index: 99998;
+      font-family: monospace; font-size: 11px; color: #0f0;
+      padding: 6px 10px; pointer-events: none;
+      max-height: 50vh; overflow: hidden;
+    }
+    #debug-log div { background: rgba(0,0,0,0.7); padding: 1px 4px; margin-bottom: 2px; border-radius: 2px; }
+    #debug-log div.err { color: #f55; }
+    #debug-log div.warn { color: #fa0; }
   </style>
 
   <script>
-    // Smooth movement component
+    // ── DEBUG LOGGER (visible on screen) ──
+    var _logEl;
+    function dbg(msg, type) {
+      console.log('[MW]', msg);
+      if (!_logEl) { _logEl = document.getElementById('debug-log'); }
+      if (!_logEl) return;
+      var d = document.createElement('div');
+      if (type) d.className = type;
+      d.textContent = msg;
+      _logEl.appendChild(d);
+      // Keep only last 12 lines
+      while (_logEl.children.length > 12) _logEl.removeChild(_logEl.firstChild);
+    }
+    window.onerror = function(msg, src, line) { dbg('JS ERR: ' + msg + ' L' + line, 'err'); };
+
     AFRAME.registerComponent('smooth-lerp', {
       init() {
         this.smoothPos = new THREE.Vector3();
@@ -100,10 +122,12 @@
 </head>
 <body>
 
+  <div id="debug-log"></div>
+
   <div id="safari-banner">
     <h2>OPEN IN SAFARI</h2>
     <p>Audio requires Safari on iOS devices.</p>
-    <button id="open-safari-btn">Open in Safari</button>
+    <button id="open-safari-btn" onclick="window.location='x-web-search://?q='+encodeURIComponent(location.href)">Open in Safari</button>
   </div>
 
   <div id="scan-reticle">
@@ -149,117 +173,135 @@
   </a-scene>
 
   <script>
-    // ── AUDIO SYSTEM ──
     var AUDIO_URLS = [
       'https://qrckys.github.io/west/westwing.mp3',
       'https://qrckys.github.io/west/westwing2.mp3'
     ];
 
-    // Create audio elements without touching them yet
-    var audioEls = AUDIO_URLS.map(function(url) {
+    var audioEls = [];
+    var audioCtx = null;
+    var gainNodes = [null, null];
+    var isPlaying = [false, false];
+    var sourceNodes = [null, null]; // track whether createMediaElementSource was called
+
+    // Create elements immediately so they can preload
+    AUDIO_URLS.forEach(function(url, i) {
       var el = new Audio();
-      el.crossOrigin = "anonymous";
+      el.crossOrigin = 'anonymous';
       el.src = url;
       el.loop = true;
       el.preload = 'auto';
       el.setAttribute('playsinline', '');
       el.setAttribute('webkit-playsinline', '');
-      return el;
+
+      el.addEventListener('canplaythrough', function() { dbg('Track ' + i + ' canplaythrough'); });
+      el.addEventListener('error', function(e) { dbg('Track ' + i + ' ERROR: ' + (el.error ? el.error.code : '?'), 'err'); });
+      el.addEventListener('stalled', function() { dbg('Track ' + i + ' stalled', 'warn'); });
+      el.addEventListener('play',  function() { dbg('Track ' + i + ' playing'); });
+      el.addEventListener('pause', function() { dbg('Track ' + i + ' paused'); });
+
+      audioEls.push(el);
     });
 
-    var audioCtx = null;
-    var gainNodes = [null, null];
-    var isPlaying = [false, false]; // manual play state tracking
-    var audioReady = false;
-
     async function unlockAudio() {
-      if (audioCtx) return; // already initialized
+      dbg('unlockAudio() called, audioCtx=' + (audioCtx ? audioCtx.state : 'null'));
+      if (audioCtx) return;
+
       try {
         window.AudioContext = window.AudioContext || window.webkitAudioContext;
         audioCtx = new AudioContext();
+        dbg('AudioContext created, state=' + audioCtx.state);
 
-        // Must await resume — iOS requires this after user gesture
         await audioCtx.resume();
+        dbg('AudioContext resumed, state=' + audioCtx.state);
 
-        gainNodes = audioEls.map(function(el, i) {
+        for (var i = 0; i < audioEls.length; i++) {
+          var el = audioEls[i];
           var g = audioCtx.createGain();
           g.gain.value = 0;
           g.connect(audioCtx.destination);
 
-          // Connecting via createMediaElementSource is enough to "register"
-          // the element with the AudioContext. Do NOT play/pause here —
-          // that consumes the user gesture and blocks later play() calls on iOS.
-          var source = audioCtx.createMediaElementSource(el);
-          source.connect(g);
+          // Only call createMediaElementSource once per element
+          if (!sourceNodes[i]) {
+            sourceNodes[i] = audioCtx.createMediaElementSource(el);
+            sourceNodes[i].connect(g);
+            dbg('Track ' + i + ' source connected');
+          }
 
-          return g;
-        });
+          gainNodes[i] = g;
+        }
 
-        audioReady = true;
-        console.log('Audio context ready, state:', audioCtx.state);
+        dbg('Audio ready. Both tracks wired.');
       } catch(e) {
-        console.warn('Audio setup failed:', e);
+        dbg('unlockAudio ERROR: ' + e.message, 'err');
       }
     }
 
-    function fadeTrackTo(idx, targetVol) {
-      if (!gainNodes[idx] || !audioCtx || !audioReady) return;
+    async function fadeTrackTo(idx, targetVol) {
+      dbg('fadeTrackTo(' + idx + ', ' + targetVol + ') ctx=' + (audioCtx ? audioCtx.state : 'null') + ' gainNode=' + (gainNodes[idx] ? 'ok' : 'null') + ' isPlaying=' + isPlaying[idx]);
+
+      if (!audioCtx || !gainNodes[idx]) {
+        dbg('fadeTrackTo: not ready, bailing', 'warn');
+        return;
+      }
+
+      // Always try to resume in case iOS suspended us
+      if (audioCtx.state === 'suspended') {
+        dbg('Resuming suspended context...');
+        await audioCtx.resume();
+        dbg('Resumed, state=' + audioCtx.state);
+      }
 
       var g = gainNodes[idx];
       var el = audioEls[idx];
       var now = audioCtx.currentTime;
 
-      // Ramp gain
       g.gain.cancelScheduledValues(now);
       g.gain.setValueAtTime(g.gain.value, now);
       g.gain.linearRampToValueAtTime(targetVol, now + 0.5);
+      dbg('Gain ramp set: 0->' + targetVol + ' on track ' + idx);
 
       if (targetVol > 0 && !isPlaying[idx]) {
-        // Resume AudioContext in case it suspended (iOS does this)
-        if (audioCtx.state === 'suspended') {
-          audioCtx.resume().then(() => {
-            el.play()
-              .then(() => { isPlaying[idx] = true; })
-              .catch(e => console.log('Play failed for track ' + idx + ':', e));
+        dbg('Calling el.play() for track ' + idx + ', readyState=' + el.readyState + ' networkState=' + el.networkState);
+        el.play()
+          .then(function() {
+            isPlaying[idx] = true;
+            dbg('el.play() resolved for track ' + idx);
+          })
+          .catch(function(e) {
+            dbg('el.play() REJECTED track ' + idx + ': ' + e.name + ' - ' + e.message, 'err');
           });
-        } else {
-          el.play()
-            .then(() => { isPlaying[idx] = true; })
-            .catch(e => console.log('Play failed for track ' + idx + ':', e));
-        }
       } else if (targetVol === 0) {
-        // Wait for fade to finish before pausing
         setTimeout(function() {
-          if (g.gain.value < 0.01) {
-            el.pause();
-            isPlaying[idx] = false;
-          }
+          dbg('Pausing track ' + idx + ' after fade, gain=' + g.gain.value.toFixed(3));
+          el.pause();
+          isPlaying[idx] = false;
         }, 650);
       }
     }
 
-    // ── AR & UI HANDLERS ──
+    // ── UI HANDLERS ──
     document.getElementById('start-btn').addEventListener('click', function() {
-      // unlockAudio MUST be called synchronously inside the click handler
-      // so it runs within the user gesture window
+      dbg('Start button clicked');
+      // Call synchronously inside gesture handler
       unlockAudio();
 
       this.style.display = 'none';
       document.getElementById('progress-container').style.display = 'block';
       document.getElementById('progress-text').style.display = 'block';
 
-      const startAR = () => {
-        document.querySelector('a-scene').systems['mindar-image-system'].start();
+      var scene = document.querySelector('a-scene');
+      var startAR = function() {
+        dbg('Starting MindAR...');
+        scene.systems['mindar-image-system'].start();
       };
 
-      if (document.querySelector('a-scene').hasLoaded) {
-        startAR();
-      } else {
-        document.querySelector('a-scene').addEventListener('loaded', startAR, { once: true });
-      }
+      if (scene.hasLoaded) { startAR(); }
+      else { scene.addEventListener('loaded', startAR, { once: true }); }
     });
 
-    document.querySelector('a-scene').addEventListener('arReady', () => {
+    document.querySelector('a-scene').addEventListener('arReady', function() {
+      dbg('arReady fired');
       document.getElementById('overlay').style.display = 'none';
       document.getElementById('scan-hint').style.display = 'block';
       document.getElementById('scan-reticle').style.display = 'block';
@@ -268,29 +310,25 @@
 
     async function onFound(e) {
       var idx = parseInt(e.currentTarget.id.split('-')[1]);
+      dbg('targetFound: idx=' + idx);
 
-      // Safety: ensure audio is initialized (in case something triggered early)
       if (!audioCtx) {
+        dbg('audioCtx null in onFound, calling unlockAudio', 'warn');
         await unlockAudio();
-      }
-
-      // Resume context if iOS suspended it
-      if (audioCtx && audioCtx.state === 'suspended') {
-        await audioCtx.resume();
       }
 
       document.getElementById('scan-reticle').style.display = 'none';
       document.getElementById('scan-hint').style.display = 'none';
       document.getElementById('ui-controls').style.display = 'flex';
 
-      fadeTrackTo(idx, 1);
+      await fadeTrackTo(idx, 1);
     }
 
     function onLost(e) {
       var idx = parseInt(e.currentTarget.id.split('-')[1]);
+      dbg('targetLost: idx=' + idx);
       fadeTrackTo(idx, 0);
 
-      // Only show reticle again if no targets are currently visible
       setTimeout(function() {
         var targets = document.querySelectorAll('a-entity[mindar-image-target]');
         var anyVisible = Array.from(targets).some(function(el) {
@@ -309,12 +347,8 @@
     document.getElementById('target-1').addEventListener('targetFound', onFound);
     document.getElementById('target-1').addEventListener('targetLost', onLost);
 
-    // Safari detection — non-Safari iOS browsers can't access camera / audio properly
     if (/iPhone|iPad|iPod/i.test(navigator.userAgent) && !/Safari/i.test(navigator.userAgent)) {
       document.getElementById('safari-banner').style.display = 'flex';
-      document.getElementById('open-safari-btn').addEventListener('click', function() {
-        window.location = 'x-web-search://?q=' + encodeURIComponent(window.location.href);
-      });
     }
   </script>
 </body>
