@@ -14,140 +14,72 @@
   <script src="https://cdn.jsdelivr.net/gh/c-frame/aframe-extras@7.2.0/dist/aframe-extras.min.js"></script>
 
   <style>
-    html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; }
-
-    body.loading-bg { background: #000 !important; }
-    body.ar-active  { background: transparent !important; }
+    html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #000; }
+    body.ar-active { background: transparent !important; }
     a-scene { background: transparent !important; }
 
     /* ── SAFARI BANNER ── */
     #safari-banner {
-      display: none;
-      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-      background: #000; color: #fff;
-      flex-direction: column; justify-content: center; align-items: center;
-      z-index: 99999; font-family: sans-serif; text-align: center;
+      display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background: #000; color: #fff; flex-direction: column; justify-content: center;
+      align-items: center; z-index: 99999; font-family: sans-serif; text-align: center;
       padding: 40px; box-sizing: border-box;
     }
-    #safari-banner h2 {
-      font-weight: 300; letter-spacing: 4px; font-size: 18px; margin-bottom: 20px;
-    }
-    #safari-banner p {
-      font-size: 13px; line-height: 1.8; opacity: 0.75; max-width: 280px;
-      letter-spacing: 1px;
-    }
-    #safari-banner .safari-icon {
-      width: 64px; height: 64px; margin-bottom: 24px; opacity: 0.9;
-    }
     #open-safari-btn {
-      margin-top: 30px; padding: 16px 36px; font-size: 14px;
-      background: #fff; color: #000; border: none; border-radius: 4px;
-      cursor: pointer; font-weight: bold; text-transform: uppercase;
-      letter-spacing: 2px;
+      margin-top: 30px; padding: 16px 36px; font-size: 14px; background: #fff;
+      color: #000; border: none; border-radius: 4px; font-weight: bold; text-transform: uppercase;
     }
 
-    /* ── OVERLAY ── */
+    /* ── UI OVERLAY ── */
     #overlay {
       position: fixed; top: 0; left: 0; width: 100%; height: 100%;
       background: #000; color: white; display: flex; flex-direction: column;
       justify-content: center; align-items: center; z-index: 9999;
       font-family: sans-serif; text-align: center;
     }
-
     #start-btn {
       padding: 18px 40px; font-size: 18px; background: #28a745; color: #fff;
       border: none; border-radius: 4px; cursor: pointer; font-weight: bold;
-      text-transform: uppercase; letter-spacing: 1px;
     }
-    #start-btn:disabled { background: #555; cursor: default; }
-
     #marker-preview { width: 150px; border: 1px solid #444; margin-bottom: 25px; opacity: 0.8; }
-
-    #progress-container {
-      width: 240px; height: 4px; background: #222;
-      margin-top: 20px; border-radius: 2px; display: none; overflow: hidden;
-    }
+    #progress-container { width: 240px; height: 4px; background: #222; margin-top: 20px; display: none; overflow: hidden; }
     #progress-bar { width: 0%; height: 100%; background: #28a745; transition: width 0.3s ease; }
+    #progress-text { font-size: 10px; margin-top: 15px; color: #666; display: none; letter-spacing: 2px; }
 
-    #progress-text {
-      font-size: 10px; margin-top: 15px; color: #666;
-      display: none; letter-spacing: 2px; text-transform: uppercase;
-    }
-
-    #error-msg {
-      display: none; margin-top: 20px; padding: 12px 20px;
-      background: #8b0000; border-radius: 4px; font-size: 13px;
-      max-width: 280px; line-height: 1.5;
-    }
-
-    #retry-btn {
-      display: none; margin-top: 14px; padding: 12px 28px;
-      font-size: 13px; background: #333; color: #fff;
-      border: 1px solid #555; border-radius: 4px; cursor: pointer;
-      font-weight: bold; text-transform: uppercase; letter-spacing: 1px;
-    }
-
-    /* ── SCAN RETICLE ── */
+    /* ── SCAN UI ── */
     #scan-reticle {
-      position: fixed; top: 50%; left: 50%;
-      transform: translate(-50%, -50%);
-      width: 200px; height: 200px;
-      z-index: 1000; display: none; pointer-events: none;
+      position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+      width: 200px; height: 200px; z-index: 1000; display: none; pointer-events: none;
     }
-    #scan-reticle .corner {
-      position: absolute; width: 28px; height: 28px;
-      border-color: #fff; border-style: solid; opacity: 0.85;
-    }
-    #scan-reticle .tl { top: 0; left: 0;    border-width: 3px 0 0 3px; }
-    #scan-reticle .tr { top: 0; right: 0;   border-width: 3px 3px 0 0; }
-    #scan-reticle .bl { bottom: 0; left: 0;  border-width: 0 0 3px 3px; }
-    #scan-reticle .br { bottom: 0; right: 0; border-width: 0 3px 3px 0; }
-
-    @keyframes reticle-pulse {
-      0%, 100% { opacity: 0.85; transform: translate(-50%, -50%) scale(1); }
-      50%       { opacity: 0.35; transform: translate(-50%, -50%) scale(0.93); }
-    }
-    #scan-reticle.scanning { animation: reticle-pulse 1.8s ease-in-out infinite; }
-
-    /* ── SCAN HINT ── */
+    .corner { position: absolute; width: 28px; height: 28px; border-color: #fff; border-style: solid; opacity: 0.8; }
+    .tl { top: 0; left: 0; border-width: 3px 0 0 3px; }
+    .tr { top: 0; right: 0; border-width: 3px 3px 0 0; }
+    .bl { bottom: 0; left: 0; border-width: 0 0 3px 3px; }
+    .br { bottom: 0; right: 0; border-width: 0 3px 3px 0; }
     #scan-hint {
-      position: fixed; bottom: 120px; width: 100%; text-align: center;
-      color: #fff; text-shadow: 0 1px 4px rgba(0,0,0,0.8);
-      font-family: sans-serif; font-size: 11px;
-      letter-spacing: 2px; text-transform: uppercase;
-      z-index: 1000; display: none; font-weight: bold; pointer-events: none;
+      position: fixed; bottom: 120px; width: 100%; text-align: center; color: #fff;
+      font-family: sans-serif; font-size: 11px; letter-spacing: 2px; z-index: 1000; display: none;
     }
-
-    /* ── UI BUTTONS ── */
     #ui-controls {
       position: fixed; bottom: 40px; left: 50%; transform: translateX(-50%);
-      display: none; gap: 15px; z-index: 1000; width: 90%; justify-content: center;
+      display: none; gap: 15px; z-index: 1000;
     }
-
     .black-btn {
       padding: 15px 25px; background: #000; color: #fff; text-decoration: none;
-      border: 1px solid #444; border-radius: 4px; font-family: sans-serif;
-      font-weight: bold; font-size: 11px; text-transform: uppercase;
-      letter-spacing: 1px; text-align: center; min-width: 120px;
+      border: 1px solid #444; border-radius: 4px; font-size: 11px; font-weight: bold;
     }
-
-    .a-enter-vr, .a-enter-ar, .a-orientation-modal { display: none !important; }
   </style>
 
   <script>
+    // Smooth movement component
     AFRAME.registerComponent('smooth-lerp', {
-      schema: {
-        positionAlpha: { type: 'number', default: 0.15 },
-        rotationAlpha: { type: 'number', default: 0.15 }
-      },
       init() {
-        this.smoothPos   = new THREE.Vector3();
-        this.smoothQuat  = new THREE.Quaternion();
+        this.smoothPos = new THREE.Vector3();
+        this.smoothQuat = new THREE.Quaternion();
         this.initialized = false;
-        this.active      = false;
-
+        this.active = false;
         this.el.addEventListener('targetFound', () => { this.active = true; });
-        this.el.addEventListener('targetLost',  () => { this.active = false; this.initialized = false; });
+        this.el.addEventListener('targetLost', () => { this.active = false; this.initialized = false; });
       },
       tick() {
         if (!this.active) return;
@@ -158,29 +90,19 @@
           this.initialized = true;
           return;
         }
-        this.smoothPos.lerp(obj.position, this.data.positionAlpha);
-        this.smoothQuat.slerp(obj.quaternion, this.data.rotationAlpha);
+        this.smoothPos.lerp(obj.position, 0.15);
+        this.smoothQuat.slerp(obj.quaternion, 0.15);
         obj.position.copy(this.smoothPos);
         obj.quaternion.copy(this.smoothQuat);
       }
     });
   </script>
 </head>
-<body class="loading-bg">
+<body>
 
   <div id="safari-banner">
-    <svg class="safari-icon" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <circle cx="32" cy="32" r="30" stroke="white" stroke-width="2"/>
-      <circle cx="32" cy="32" r="2" fill="white"/>
-      <line x1="32" y1="8" x2="32" y2="14" stroke="white" stroke-width="2"/>
-      <line x1="32" y1="50" x2="32" y2="56" stroke="white" stroke-width="2"/>
-      <line x1="8" y1="32" x2="14" y2="32" stroke="white" stroke-width="2"/>
-      <line x1="50" y1="32" x2="56" y2="32" stroke="white" stroke-width="2"/>
-      <polygon points="38,20 26,38 32,32" fill="white" opacity="0.9"/>
-      <polygon points="26,44 38,26 32,32" fill="white" opacity="0.4"/>
-    </svg>
     <h2>OPEN IN SAFARI</h2>
-    <p>For the full experience including audio, this page needs to open in Safari.</p>
+    <p>Audio requires Safari on iOS devices.</p>
     <button id="open-safari-btn">Open in Safari</button>
   </div>
 
@@ -188,47 +110,34 @@
     <div class="corner tl"></div><div class="corner tr"></div>
     <div class="corner bl"></div><div class="corner br"></div>
   </div>
-
   <div id="scan-hint">Point camera at artwork</div>
 
   <div id="overlay">
-    <h1 style="letter-spacing: 5px; font-weight: 300; margin-bottom: 5px;">MARK WEST</h1>
-    <p style="font-size: 10px; letter-spacing: 2px; text-transform: uppercase; margin-top: 0; margin-bottom: 30px; opacity: 0.6;">By Qrcky</p>
-
-    <div id="status-container">
-      <img src="https://qrckys.github.io/west/westwing.jpg" id="marker-preview" alt="Target">
-      <br>
-      <button id="start-btn">Enter Experience</button>
-
-      <div id="progress-container">
-        <div id="progress-bar"></div>
-      </div>
-      <p id="progress-text">Initializing...</p>
-      <div id="error-msg"></div>
-      <button id="retry-btn">Try Again</button>
-    </div>
+    <h1 style="letter-spacing: 5px; font-weight: 300;">MARK WEST</h1>
+    <img src="https://qrckys.github.io/west/westwing.jpg" id="marker-preview">
+    <button id="start-btn">Enter Experience</button>
+    <div id="progress-container"><div id="progress-bar"></div></div>
+    <p id="progress-text">Initializing...</p>
   </div>
 
   <div id="ui-controls">
-    <a href="https://www.instagram.com/houseofmarkwest?igsh=MWYwa2Jtd2prZjJmeA%3D%3D" target="_blank" class="black-btn">Instagram</a>
+    <a href="https://www.instagram.com/houseofmarkwest" target="_blank" class="black-btn">Instagram</a>
     <a href="https://markanthonywest.com/" target="_blank" class="black-btn">Get Prints</a>
   </div>
 
   <a-scene
-    mindar-image="imageTargetSrc: https://qrckys.github.io/west/targets.mind; autoStart: false; uiScanning: false; uiLoading: false; maxTrack: 2; filterMinCF: 0.001; filterBeta: 0.001;"
-    color-space="sRGB"
-    renderer="colorManagement: true; physicallyCorrectLights: true; alpha: true"
+    mindar-image="imageTargetSrc: https://qrckys.github.io/west/targets.mind; autoStart: false; uiScanning: false; uiLoading: false; maxTrack: 2;"
+    renderer="colorManagement: true; alpha: true"
     vr-mode-ui="enabled: false"
     device-orientation-permission-ui="enabled: false">
 
-    <a-assets timeout="30000">
-      <a-asset-item id="sculpture0" src="https://qrckys.github.io/west/westwing.glb" crossorigin="anonymous"></a-asset-item>
-      <a-asset-item id="sculpture1" src="https://qrckys.github.io/west/westwing2.glb" crossorigin="anonymous"></a-asset-item>
+    <a-assets>
+      <a-asset-item id="sculpture0" src="https://qrckys.github.io/west/westwing.glb"></a-asset-item>
+      <a-asset-item id="sculpture1" src="https://qrckys.github.io/west/westwing2.glb"></a-asset-item>
     </a-assets>
 
     <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
     <a-light type="ambient" intensity="1.2"></a-light>
-    <a-light type="directional" intensity="0.8" position="1 2 1"></a-light>
 
     <a-entity mindar-image-target="targetIndex: 0" smooth-lerp id="target-0">
       <a-gltf-model src="#sculpture0" scale=".6 .6 .6" animation-mixer></a-gltf-model>
@@ -240,119 +149,116 @@
   </a-scene>
 
   <script>
-    // ── IN-APP BROWSER DETECTION ──
-    (function() {
-      var ua = navigator.userAgent;
-      if (!/iPhone|iPad|iPod/i.test(ua)) return;
-      var isFullSafari = /Safari\//.test(ua) && !/CriOS|FxiOS/.test(ua);
-      if (!isFullSafari && !window.navigator.standalone) {
-        document.getElementById('safari-banner').style.display = 'flex';
-        document.getElementById('open-safari-btn').addEventListener('click', function() {
-          window.location = 'x-web-search://?q=' + encodeURIComponent(window.location.href);
-        });
-      }
-    })();
-
-    var startBtn = document.getElementById('start-btn'), overlay = document.getElementById('overlay'), 
-        sceneEl = document.querySelector('a-scene'), scanHint = document.getElementById('scan-hint'),
-        scanReticle = document.getElementById('scan-reticle'), uiControls = document.getElementById('ui-controls'),
-        progressBar = document.getElementById('progress-bar'), progressText = document.getElementById('progress-text');
-
-    var activeTargets = new Set(), arStarted = false, audioCtx = null, gainNodes = [null, null];
-    
-    // FIXED URLS
+    // ── AUDIO SYSTEM ──
     var AUDIO_URLS = [
       'https://qrckys.github.io/west/westwing.mp3',
       'https://qrckys.github.io/west/westwing2.mp3'
     ];
 
     var audioEls = AUDIO_URLS.map(function(url) {
-      var el = new Audio(url);
+      var el = new Audio();
+      el.crossOrigin = "anonymous"; // FIX 1: CORS
+      el.src = url;
       el.loop = true;
       el.preload = 'auto';
       el.setAttribute('playsinline', '');
+      el.setAttribute('webkit-playsinline', '');
       return el;
     });
+
+    var audioCtx = null;
+    var gainNodes = [null, null];
 
     function unlockAudio() {
       if (audioCtx) return;
       try {
-        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        audioCtx.resume();
+        window.AudioContext = window.AudioContext || window.webkitAudioContext;
+        audioCtx = new AudioContext();
+        audioCtx.resume(); // FIX 2: Immediate Resume
 
-        audioEls.forEach(function(el) {
-          el.play().then(function() { el.pause(); el.currentTime = 0; }).catch(function(){});
-        });
-
-        gainNodes = audioEls.map(function(el) {
+        gainNodes = audioEls.map(function(el, i) {
           var g = audioCtx.createGain();
           g.gain.value = 0;
           g.connect(audioCtx.destination);
-          audioCtx.createMediaElementSource(el).connect(g);
+          
+          // Connect element to context
+          var source = audioCtx.createMediaElementSource(el);
+          source.connect(g);
+
+          // Force unlock by playing/pausing
+          el.play().then(() => { el.pause(); el.currentTime = 0; }).catch(e => console.error("Unlock error:", e));
+          
           return g;
         });
       } catch(e) { console.warn('Audio setup failed:', e); }
     }
 
     function fadeTrackTo(idx, targetVol) {
-      var el = audioEls[idx], g = gainNodes[idx];
-      if (!g) return;
+      if (!gainNodes[idx] || !audioCtx) return;
+      var g = gainNodes[idx];
+      var el = audioEls[idx];
       var now = audioCtx.currentTime;
+
       g.gain.cancelScheduledValues(now);
       g.gain.setValueAtTime(g.gain.value, now);
-      g.gain.linearRampToValueAtTime(targetVol, now + 0.6);
-      if (targetVol > 0 && el.paused) el.play().catch(function(){});
-      else if (targetVol === 0) setTimeout(function(){ if(g.gain.value === 0) el.pause(); }, 600);
+      g.gain.linearRampToValueAtTime(targetVol, now + 0.5);
+
+      if (targetVol > 0 && el.paused) {
+        el.play().catch(e => console.log("Play failed:", e));
+      } else if (targetVol === 0) {
+        setTimeout(() => { if(g.gain.value < 0.01) el.pause(); }, 600);
+      }
     }
 
-    startBtn.addEventListener('click', function() {
+    // ── AR & UI HANDLERS ──
+    document.getElementById('start-btn').addEventListener('click', function() {
       unlockAudio();
-      startBtn.style.display = 'none';
+      this.style.display = 'none';
       document.getElementById('progress-container').style.display = 'block';
-      progressText.style.display = 'block';
+      document.getElementById('progress-text').style.display = 'block';
       
-      const startAR = () => { sceneEl.systems['mindar-image-system'].start(); };
-      if (sceneEl.hasLoaded) startAR();
-      else sceneEl.addEventListener('loaded', startAR, { once: true });
+      const startAR = () => { document.querySelector('a-scene').systems['mindar-image-system'].start(); };
+      if (document.querySelector('a-scene').hasLoaded) startAR();
+      else document.querySelector('a-scene').addEventListener('loaded', startAR, { once: true });
     });
 
-    sceneEl.addEventListener('arReady', function() {
-      arStarted = true;
-      overlay.style.display = 'none';
-      scanHint.style.display = 'block';
-      scanReticle.style.display = 'block';
-      scanReticle.classList.add('scanning');
-      document.body.classList.replace('loading-bg', 'ar-active');
+    document.querySelector('a-scene').addEventListener('arReady', () => {
+      document.getElementById('overlay').style.display = 'none';
+      document.getElementById('scan-hint').style.display = 'block';
+      document.getElementById('scan-reticle').style.display = 'block';
+      document.body.classList.add('ar-active');
     });
 
-    function onTargetFound(e) {
+    function onFound(e) {
       var idx = parseInt(e.currentTarget.id.split('-')[1]);
-      activeTargets.add(idx);
-      if (activeTargets.size === 1) {
-        scanReticle.style.display = 'none';
-        scanHint.style.display = 'none';
-        uiControls.style.display = 'flex';
-      }
+      document.getElementById('scan-reticle').style.display = 'none';
+      document.getElementById('scan-hint').style.display = 'none';
+      document.getElementById('ui-controls').style.display = 'flex';
       fadeTrackTo(idx, 1);
     }
 
-    function onTargetLost(e) {
+    function onLost(e) {
       var idx = parseInt(e.currentTarget.id.split('-')[1]);
-      activeTargets.delete(idx);
-      setTimeout(function() {
-        if (!activeTargets.has(idx)) fadeTrackTo(idx, 0);
-        if (activeTargets.size === 0) {
-          scanReticle.style.display = 'block';
-          scanHint.style.display = 'block';
-          uiControls.style.display = 'none';
+      fadeTrackTo(idx, 0);
+      // Wait a moment before showing reticle again to avoid flickering
+      setTimeout(() => {
+        if ([...document.querySelectorAll('a-entity[mindar-image-target]')].every(el => !el.getAttribute('visible'))) {
+           document.getElementById('scan-reticle').style.display = 'block';
+           document.getElementById('scan-hint').style.display = 'block';
+           document.getElementById('ui-controls').style.display = 'none';
         }
-      }, 1500);
+      }, 1000);
     }
 
-    document.getElementById('target-0').addEventListener('targetFound', onTargetFound);
-    document.getElementById('target-0').addEventListener('targetLost', onTargetLost);
-    document.getElementById('target-1').addEventListener('targetFound', onTargetFound);
-    document.getElementById('target-1').addEventListener('targetLost', onTargetLost);
+    document.getElementById('target-0').addEventListener('targetFound', onFound);
+    document.getElementById('target-0').addEventListener('targetLost', onLost);
+    document.getElementById('target-1').addEventListener('targetFound', onFound);
+    document.getElementById('target-1').addEventListener('targetLost', onLost);
+
+    // Safari detection
+    if (/iPhone|iPad|iPod/i.test(navigator.userAgent) && !/Safari/i.test(navigator.userAgent)) {
+      document.getElementById('safari-banner').style.display = 'flex';
+    }
   </script>
 </body>
 </html>
