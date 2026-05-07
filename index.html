@@ -59,12 +59,21 @@
       font-family: sans-serif; font-size: 11px; letter-spacing: 2px; z-index: 1000; display: none;
     }
     #ui-controls {
-      position: fixed; bottom: 40px; left: 50%; transform: translateX(-50%);
-      display: none; gap: 15px; z-index: 1000;
+      position: fixed; bottom: 0; left: 0; width: 100%;
+      display: none; z-index: 1000;
     }
     .black-btn {
-      padding: 15px 25px; background: #000; color: #fff; text-decoration: none;
-      border: 1px solid #444; border-radius: 4px; font-size: 11px; font-weight: bold;
+      display: inline-block; width: 50%; padding: 22px 0;
+      background: #000; color: #fff; text-decoration: none;
+      border: none; border-top: 1px solid #333;
+      font-size: 11px; font-weight: bold; letter-spacing: 2px;
+      text-align: center; box-sizing: border-box;
+    }
+    .black-btn:first-child { border-right: 1px solid #333; }
+
+    /* Force-hide A-Frame's VR button on all browsers */
+    .a-enter-vr, .a-enter-vr-button, [data-aframe-vr-mode-ui] {
+      display: none !important;
     }
   </style>
 
@@ -118,8 +127,7 @@
   </div>
 
   <div id="ui-controls">
-    <a href="https://www.instagram.com/houseofmarkwest" target="_blank" class="black-btn">Instagram</a>
-    <a href="https://markanthonywest.com/" target="_blank" class="black-btn">Get Prints</a>
+    <a href="https://www.instagram.com/houseofmarkwest" target="_blank" class="black-btn">INSTAGRAM</a><a href="https://markanthonywest.com/" target="_blank" class="black-btn">GET PRINTS</a>
   </div>
 
   <a-scene
